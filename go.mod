@@ -3,7 +3,7 @@ module github.com/RacoonMediaServer/rms-bot
 go 1.20
 
 require (
-	github.com/RacoonMediaServer/rms-packages v1.0.0
+	github.com/RacoonMediaServer/rms-packages v1.3.0
 	github.com/urfave/cli/v2 v2.3.0
 	go-micro.dev/v4 v4.9.0
 	gorm.io/driver/postgres v1.4.7
