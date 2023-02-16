@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/config"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/db"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/server"
+	botService "github.com/RacoonMediaServer/rms-bot-server/internal/service"
+	rms_bot_server "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-bot-server"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
@@ -48,10 +51,20 @@ func main() {
 		_ = logger.Init(logger.WithLevel(logger.DebugLevel))
 	}
 
-	_ = servicemgr.NewServiceFactory(service)
+	cfg := config.Config()
 
-	_, err := db.Connect(config.Config().Database)
+	database, err := db.Connect(cfg.Database)
 	if err != nil {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
+
+	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New()); err != nil {
+		logger.Fatalf("Register service failed: %s", err)
+	}
+
+	srv := server.New(database, servicemgr.NewServiceFactory(service))
+	if err = srv.ListenAndServe(cfg.Http.Host, cfg.Http.Port); err != nil {
+		logger.Fatalf("Cannot start server: %s", err)
+	}
+	srv.Wait()
 }
