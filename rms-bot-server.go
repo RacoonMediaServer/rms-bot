@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/RacoonMediaServer/rms-bot/internal/config"
-	"github.com/RacoonMediaServer/rms-bot/internal/db"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/config"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/db"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
@@ -12,7 +12,7 @@ import (
 
 var Version = "v0.0.0"
 
-const serviceName = "rms-bot"
+const serviceName = "rms-bot-server"
 
 func main() {
 	logger.Infof("%s %s", serviceName, Version)

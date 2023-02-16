@@ -1,4 +1,4 @@
-module github.com/RacoonMediaServer/rms-bot
+module github.com/RacoonMediaServer/rms-bot-server
 
 go 1.20
 
