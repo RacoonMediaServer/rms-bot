@@ -13,7 +13,7 @@ var upgrader = websocket.Upgrader{
 	HandshakeTimeout: 10 * time.Second,
 }
 
-func (s *server) authorize(r *http.Request) (bool, error) {
+func (s *Server) authorize(r *http.Request) (bool, error) {
 	token := r.Header.Get("X-Token")
 	if token == "" {
 		logger.Warnf("[%s] Unauthorized access attempt", r.RemoteAddr)
@@ -33,7 +33,7 @@ func (s *server) authorize(r *http.Request) (bool, error) {
 	return false, nil
 }
 
-func (s *server) handler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("X-Token")
 	if ok, err := s.authorize(r); !ok {
 		if err != nil {
@@ -52,10 +52,16 @@ func (s *server) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess := newSession(conn)
+	sess := newSession(conn, token, s.ch)
 	defer sess.close()
 
-	s.sessions.Store(token, sess)
-	sess.run()
-	s.sessions.Delete(token)
+	s.mu.Lock()
+	s.sessions[token] = sess
+	s.mu.Unlock()
+
+	sess.run(r.Context())
+
+	s.mu.Lock()
+	delete(s.sessions, token)
+	s.mu.Unlock()
 }

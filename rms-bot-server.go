@@ -53,16 +53,18 @@ func main() {
 
 	cfg := config.Config()
 
-	database, err := db.Connect(cfg.Database)
+	_, err := db.Connect(cfg.Database)
 	if err != nil {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
 
-	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New()); err != nil {
+	srv := server.New(servicemgr.NewServiceFactory(service))
+
+	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New(srv)); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
 	}
 
-	srv := server.New(database, servicemgr.NewServiceFactory(service))
+	// запускам сервер, который будет обрабатывать WebSocket подключения от клиентов
 	if err = srv.ListenAndServe(cfg.Http.Host, cfg.Http.Port); err != nil {
 		logger.Fatalf("Cannot start server: %s", err)
 	}

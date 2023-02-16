@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/RacoonMediaServer/rms-bot-server/internal/db"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"go-micro.dev/v4/logger"
 	"net"
@@ -13,24 +13,45 @@ import (
 	"time"
 )
 
-type Server interface {
-	ListenAndServe(host string, port int) error
-	Shutdown()
-	Wait()
+var ErrClientIsNotConnected = errors.New("client is not connectes")
+
+const maxMessageQueueSize = 1000
+
+type Server struct {
+	l  logger.Logger
+	f  servicemgr.ServiceFactory
+	s  http.Server
+	wg sync.WaitGroup
+	ch chan comm.OutgoingMessage
+
+	mu       sync.RWMutex
+	sessions map[string]*session
 }
 
-type server struct {
-	db       db.Database
-	f        servicemgr.ServiceFactory
-	s        http.Server
-	wg       sync.WaitGroup
-	sessions sync.Map
+func (s *Server) OutgoingChannel() <-chan comm.OutgoingMessage {
+	return s.ch
 }
 
-func New(database db.Database, f servicemgr.ServiceFactory) Server {
-	s := &server{
-		db: database,
-		f:  f,
+func (s *Server) Send(message comm.IncomingMessage) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sess, ok := s.sessions[message.Token]
+	if !ok {
+		return ErrClientIsNotConnected
+	}
+
+	sess.send(message.Message)
+
+	return nil
+}
+
+func New(f servicemgr.ServiceFactory) *Server {
+	s := &Server{
+		l:        logger.DefaultLogger.Fields(map[string]interface{}{"from": "server"}),
+		f:        f,
+		sessions: make(map[string]*session),
+		ch:       make(chan comm.OutgoingMessage, maxMessageQueueSize),
 	}
 
 	mux := http.NewServeMux()
@@ -40,24 +61,24 @@ func New(database db.Database, f servicemgr.ServiceFactory) Server {
 	return s
 }
 
-func (s *server) ListenAndServe(host string, port int) error {
+func (s *Server) ListenAndServe(host string, port int) error {
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		return fmt.Errorf("bind server address failed: %w", err)
+		return fmt.Errorf("bind Server address failed: %w", err)
 	}
 
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
 		if err = s.s.Serve(l); !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatal(err)
+			s.l.Log(logger.ErrorLevel, err)
 		}
 	}()
 
 	return nil
 }
 
-func (s *server) Shutdown() {
+func (s *Server) Shutdown() {
 	const shutdownTimeout = 5 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
@@ -66,6 +87,19 @@ func (s *server) Shutdown() {
 	s.wg.Wait()
 }
 
-func (s *server) Wait() {
+func (s *Server) Wait() {
 	s.wg.Wait()
+}
+
+func (s *Server) DropSession(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	sess, ok := s.sessions[token]
+	if !ok {
+		return
+	}
+
+	sess.close()
+	delete(s.sessions, token)
 }
