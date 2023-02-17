@@ -3,7 +3,7 @@ module github.com/RacoonMediaServer/rms-bot-server
 go 1.20
 
 require (
-	github.com/RacoonMediaServer/rms-packages v1.3.3
+	github.com/RacoonMediaServer/rms-packages v1.3.4
 	github.com/gorilla/websocket v1.4.2
 	github.com/urfave/cli/v2 v2.3.0
 	go-micro.dev/v4 v4.9.0
@@ -26,6 +26,7 @@ require (
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
 	github.com/go-git/go-git/v5 v5.4.2 // indirect
+	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.0.4 // indirect
@@ -50,6 +51,8 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
+	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
+	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.6.0 // indirect

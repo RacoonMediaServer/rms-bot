@@ -8,10 +8,16 @@ type HTTP struct {
 	Port int
 }
 
+// Bot is settings of Telegram Bot
+type Bot struct {
+	Token string
+}
+
 // Configuration represents entire service configuration
 type Configuration struct {
 	Database configuration.Database
 	Http     HTTP
+	Bot      Bot
 }
 
 var config Configuration

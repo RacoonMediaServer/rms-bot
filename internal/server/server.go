@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-var ErrClientIsNotConnected = errors.New("client is not connectes")
-
 const maxMessageQueueSize = 1000
 
 type Server struct {
@@ -38,7 +36,7 @@ func (s *Server) Send(message comm.IncomingMessage) error {
 
 	sess, ok := s.sessions[message.Token]
 	if !ok {
-		return ErrClientIsNotConnected
+		return comm.ErrDeviceIsNotConnected
 	}
 
 	sess.send(message.Message)

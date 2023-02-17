@@ -9,5 +9,8 @@
   "http": {
     "host": "localhost",
     "port": 8080
+  },
+  "bot": {
+    "token": ""
   }
 }

@@ -14,6 +14,7 @@ import (
 
 func main() {
 	token := flag.String("token", "", "Device token")
+	needCode := flag.Bool("code", false, "Need to acquire linkage code")
 	flag.Parse()
 
 	u := url.URL{
@@ -31,6 +32,10 @@ func main() {
 	}
 	defer conn.Close()
 
+	if *needCode {
+		acquireCode(conn)
+	}
+
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -39,27 +44,44 @@ func main() {
 
 		for {
 			<-ticker.C
-			msg := communication.BotMessage{Text: fmt.Sprintf("%d", cnt), Timestamp: timestamppb.Now()}
+			msg := communication.BotMessage{Text: fmt.Sprintf("%d", cnt)}
 			cnt++
-			buf, err := proto.Marshal(&msg)
-			if err != nil {
-				panic(err)
-			}
-			if err = conn.WriteMessage(websocket.BinaryMessage, buf); err != nil {
-				panic(err)
-			}
+			send(conn, &msg)
 		}
 	}()
 
 	for {
-		_, buf, err := conn.ReadMessage()
-		if err != nil {
-			panic(err)
-		}
-		var msg communication.UserMessage
-		if err = proto.Unmarshal(buf, &msg); err != nil {
-			panic(err)
-		}
+		msg := receive(conn)
 		fmt.Println(msg.String())
 	}
+}
+
+func acquireCode(conn *websocket.Conn) {
+	send(conn, &communication.BotMessage{Type: communication.MessageType_AcquiringCode})
+	resp := receive(conn)
+	fmt.Println("Linkage Code", resp.Text)
+}
+
+func send(conn *websocket.Conn, msg *communication.BotMessage) {
+	msg.Timestamp = timestamppb.Now()
+	buf, err := proto.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	if err = conn.WriteMessage(websocket.BinaryMessage, buf); err != nil {
+		panic(err)
+	}
+}
+
+func receive(conn *websocket.Conn) *communication.UserMessage {
+	_, buf, err := conn.ReadMessage()
+	if err != nil {
+		panic(err)
+	}
+	var msg communication.UserMessage
+	if err = proto.Unmarshal(buf, &msg); err != nil {
+		panic(err)
+	}
+
+	return &msg
 }

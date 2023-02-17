@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/bot"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/config"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/db"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/server"
@@ -53,7 +54,7 @@ func main() {
 
 	cfg := config.Config()
 
-	_, err := db.Connect(cfg.Database)
+	database, err := db.Connect(cfg.Database)
 	if err != nil {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
@@ -63,6 +64,13 @@ func main() {
 	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New(srv)); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
 	}
+
+	// запускаем Telegram бот
+	tBot, err := bot.NewBot(cfg.Bot.Token, database, srv)
+	if err != nil {
+		logger.Fatalf("Cannot start Telegram bot: %s", err)
+	}
+	defer tBot.Stop()
 
 	// запускам сервер, который будет обрабатывать WebSocket подключения от клиентов
 	if err = srv.ListenAndServe(cfg.Http.Host, cfg.Http.Port); err != nil {
