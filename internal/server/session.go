@@ -11,14 +11,16 @@ import (
 )
 
 type session struct {
+	l     logger.Logger
 	conn  *websocket.Conn
 	token string
 	user  chan *communication.UserMessage
 	out   chan<- comm.OutgoingMessage
 }
 
-func newSession(conn *websocket.Conn, token string, out chan<- comm.OutgoingMessage) *session {
+func newSession(l logger.Logger, conn *websocket.Conn, token string, out chan<- comm.OutgoingMessage) *session {
 	return &session{
+		l:     l.Fields(map[string]interface{}{"token": token}),
 		conn:  conn,
 		token: token,
 		user:  make(chan *communication.UserMessage, maxMessageQueueSize),
@@ -27,6 +29,8 @@ func newSession(conn *websocket.Conn, token string, out chan<- comm.OutgoingMess
 }
 
 func (s *session) run(ctx context.Context) {
+	s.l.Log(logger.InfoLevel, "Established")
+
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	defer wg.Wait()
@@ -43,15 +47,15 @@ func (s *session) run(ctx context.Context) {
 		// читаем сообщения от клиентского устройства
 		_, buf, err := s.conn.ReadMessage()
 		if err != nil {
-			logger.Errorf("[%s] pick message failed: %s", s.token, err)
+			s.l.Logf(logger.ErrorLevel, "pick message failed: %s", s.token, err)
 			return
 		}
 		msg := &communication.BotMessage{}
 		if err = proto.Unmarshal(buf, msg); err != nil {
-			logger.Errorf("[%s] deserialize incoming message failed: %s", s.token, err)
+			s.l.Logf(logger.ErrorLevel, "deserialize incoming message failed: %s", err)
 			return
 		}
-		logger.Debugf("[%s] message from client received: %s", s.token, msg)
+		s.l.Logf(logger.DebugLevel, "message from client received: %s", msg)
 		s.out <- comm.OutgoingMessage{Token: s.token, Message: msg}
 	}
 }
@@ -64,14 +68,14 @@ func (s *session) writeProcess(ctx context.Context) {
 		case msg := <-s.user:
 			buf, err := proto.Marshal(msg)
 			if err != nil {
-				logger.Errorf("[%s] serialize message failed: %s", s.token, err)
+				s.l.Logf(logger.ErrorLevel, "serialize message failed: %s", err)
 				continue
 			}
 			if err = s.conn.WriteMessage(websocket.BinaryMessage, buf); err != nil {
-				logger.Errorf("[%s] write message failed: %s", s.token, err)
+				s.l.Logf(logger.ErrorLevel, "write message failed: %s", err)
 				continue
 			}
-			logger.Debugf("[%s] message sent to client: %s", s.token, msg)
+			s.l.Logf(logger.DebugLevel, "message sent to client: %s", msg)
 		}
 	}
 }

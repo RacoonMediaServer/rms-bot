@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	rms_users "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-users"
 	"github.com/gorilla/websocket"
@@ -13,14 +14,12 @@ var upgrader = websocket.Upgrader{
 	HandshakeTimeout: 10 * time.Second,
 }
 
-func (s *Server) authorize(r *http.Request) (bool, error) {
-	token := r.Header.Get("X-Token")
+func (s *Server) authorize(ctx context.Context, token string) (bool, error) {
 	if token == "" {
-		logger.Warnf("[%s] Unauthorized access attempt", r.RemoteAddr)
 		return false, nil
 	}
 
-	resp, err := s.f.NewUsers().GetPermissions(r.Context(), &rms_users.GetPermissionsRequest{Token: token})
+	resp, err := s.f.NewUsers().GetPermissions(ctx, &rms_users.GetPermissionsRequest{Token: token})
 	if err != nil {
 		return false, fmt.Errorf("token validation failed: %w", err)
 	}
@@ -34,14 +33,15 @@ func (s *Server) authorize(r *http.Request) (bool, error) {
 }
 
 func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
+	l := s.l.Fields(map[string]interface{}{"addr": r.RemoteAddr})
 	token := r.Header.Get("X-Token")
-	if ok, err := s.authorize(r); !ok {
+	if ok, err := s.authorize(r.Context(), token); !ok {
 		if err != nil {
-			logger.Errorf("[%s]: Authorization failed: %s", r.RemoteAddr, err)
+			l.Logf(logger.ErrorLevel, "Authorization failed: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		logger.Warnf("[%s]: Forbidden", r.RemoteAddr)
+		l.Log(logger.ErrorLevel, "Forbidden")
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -52,7 +52,7 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess := newSession(conn, token, s.ch)
+	sess := newSession(s.l, conn, token, s.ch)
 	defer sess.close()
 
 	s.mu.Lock()

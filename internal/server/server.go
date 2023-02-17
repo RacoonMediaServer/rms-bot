@@ -100,6 +100,7 @@ func (s *Server) DropSession(token string) {
 		return
 	}
 
+	// TODO: сделать это безопаснее
 	sess.close()
 	delete(s.sessions, token)
 }
