@@ -2,7 +2,9 @@ package bot
 
 import (
 	"errors"
+	"fmt"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
 	"sync"
 	"time"
@@ -13,6 +15,8 @@ import (
 
 // Database is a set of methods for accessing table, which map devices to Telegram users
 type Database interface {
+	LoadLinkages() (map[string]int64, error)
+	StoreLinkage(linkage model.Linkage) error
 }
 
 // Bot implements a Telegram bot
@@ -31,24 +35,30 @@ type Bot struct {
 type stopCommand struct{}
 
 func NewBot(token string, database Database, c comm.DeviceCommunicator) (*Bot, error) {
+	var err error
 	bot := &Bot{
 		l:            logger.DefaultLogger.Fields(map[string]interface{}{"from": "bot"}),
 		db:           database,
-		cmd:          make(chan interface{}),
 		c:            c,
 		tokenToChat:  map[string]int64{},
 		chatToToken:  map[int64]string{},
 		linkageCodes: map[string]linkageCode{},
 	}
 
-	// TODO: загрузка чатов из БД
+	bot.tokenToChat, err = database.LoadLinkages()
+	if err != nil {
+		return nil, fmt.Errorf("load linkages failed: %w", err)
+	}
+	for k, v := range bot.tokenToChat {
+		bot.chatToToken[v] = k
+	}
 
-	var err error
 	bot.api, err = tgbotapi.NewBotAPI(token)
 	if err != nil {
 		return nil, err
 	}
 
+	bot.cmd = make(chan interface{})
 	bot.wg.Add(1)
 	go func() {
 		defer bot.wg.Done()
@@ -125,14 +135,17 @@ func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
 	token, ok := bot.chatToToken[message.Chat.ID]
 	if !ok {
 		if code, ok := bot.linkageCodes[message.Text]; ok {
-			bot.linkUserToDevice(message.Chat.ID, code)
+			if err := bot.linkUserToDevice(message.Chat.ID, code); err != nil {
+				bot.l.Logf(logger.ErrorLevel, "Link %d to device %s failed: %s", message.Chat.ID, code.token, err)
+				bot.sendTextMessage(message.Chat.ID, "Не удалось связать чат с устройством")
+				return
+			}
 
-			msg := newMessage("Текущий чат связан с устройством. Ура, ничего не сломалось...", 0)
-			bot.send(msg.compose(message.Chat.ID))
+			bot.l.Logf(logger.InfoLevel, "Device '%s' linked to chat %d", code.token, message.Chat.ID)
+			bot.sendTextMessage(message.Chat.ID, "Текущий чат связан с устройством. Ура, ничего не сломалось...")
 			return
 		}
-		msg := newMessage("Необходимо привязать устройство к текущему чату. Для этого необходимо ввести здесь код из веб-интерфейса", 0)
-		bot.send(msg.compose(message.Chat.ID))
+		bot.sendTextMessage(message.Chat.ID, "Необходимо привязать устройство к текущему чату. Для этого необходимо ввести здесь код из веб-интерфейса")
 		return
 	}
 
@@ -145,8 +158,11 @@ func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
 		} else {
 			text = "Что-то пошло не так..."
 		}
-
-		msg := newMessage(text, 0)
-		bot.send(msg.compose(message.Chat.ID))
+		bot.sendTextMessage(message.Chat.ID, text)
 	}
+}
+
+func (bot *Bot) sendTextMessage(chat int64, text string) {
+	msg := newMessage(text, 0)
+	bot.send(msg.compose(chat))
 }

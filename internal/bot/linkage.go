@@ -2,6 +2,7 @@ package bot
 
 import (
 	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
 	"github.com/teris-io/shortid"
 	"go-micro.dev/v4/logger"
@@ -49,11 +50,13 @@ func (bot *Bot) clearExpiredLinkageCodes() {
 	}
 }
 
-func (bot *Bot) linkUserToDevice(id int64, code linkageCode) {
+func (bot *Bot) linkUserToDevice(id int64, code linkageCode) error {
+	if err := bot.db.StoreLinkage(model.Linkage{ChatID: id, DeviceID: code.token}); err != nil {
+		return err
+	}
 	bot.tokenToChat[code.token] = id
 	bot.chatToToken[id] = code.token
-	// TODO: запись в БД
 	delete(bot.linkageCodes, code.code)
 
-	bot.l.Logf(logger.InfoLevel, "Device '%s' linked to chat %d", code.token, id)
+	return nil
 }
