@@ -48,10 +48,8 @@ github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAE
 github.com/OpenDNS/vegadns2client v0.0.0-20180418235048-a3fa4a771d87/go.mod h1:iGLljf5n9GjT6kc0HBvyI1nOKnGQbNB66VzSNbK5iks=
 github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 h1:YoJbenK9C67SkzkDfmQuVln04ygHj3vjZfd9FL+GmQQ=
 github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7/go.mod h1:z4/9nQmJSSwwds7ejkxaJwO37dru3geImFUdJlaLzQo=
-github.com/RacoonMediaServer/rms-packages v1.3.3 h1:VUIQMtVprKz6RbdDspzR8Trk7/i3zEe1ei2Va0sT/tU=
-github.com/RacoonMediaServer/rms-packages v1.3.3/go.mod h1:EC9a/lRmBSwlDFKYx2KRhpFbz/N9oNDjj5z/0IqQHV4=
-github.com/RacoonMediaServer/rms-packages v1.3.4 h1:CrfuTI2gV8MqyjVSI5J+ulunruZD7XqL4hA1TRCGshI=
-github.com/RacoonMediaServer/rms-packages v1.3.4/go.mod h1:EC9a/lRmBSwlDFKYx2KRhpFbz/N9oNDjj5z/0IqQHV4=
+github.com/RacoonMediaServer/rms-packages v1.4.0 h1:aILkOzvOyX5rkuL7smFuZiwcR6ISocNLQpdP/WVM8Jg=
+github.com/RacoonMediaServer/rms-packages v1.4.0/go.mod h1:EC9a/lRmBSwlDFKYx2KRhpFbz/N9oNDjj5z/0IqQHV4=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk=

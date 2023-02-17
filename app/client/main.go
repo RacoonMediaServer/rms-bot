@@ -64,6 +64,20 @@ func acquireCode(conn *websocket.Conn) {
 
 func send(conn *websocket.Conn, msg *communication.BotMessage) {
 	msg.Timestamp = timestamppb.Now()
+	msg.Buttons = append(msg.Buttons, &communication.Button{
+		Title:   "One",
+		Command: "1",
+	})
+	msg.Buttons = append(msg.Buttons, &communication.Button{
+		Title:   "Two",
+		Command: "2",
+	})
+	msg.KeyboardStyle = communication.KeyboardStyle_Message
+	msg.Attachment = &communication.Attachment{
+		Type:     communication.Attachment_PhotoURL,
+		MimeType: "",
+		Content:  []byte("https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fimages.radio.com%2Faiu-media%2Fgettyimages-91702654-23d3a585-1cd4-4051-9536-729eaba3e179.jpg&f=1&nofb=1&ipt=7b9e64fb346221340dd35e3f728fc6df90b10f4cb85fc7ab91f1c01da446d2ac&ipo=images"),
+	}
 	buf, err := proto.Marshal(msg)
 	if err != nil {
 		panic(err)

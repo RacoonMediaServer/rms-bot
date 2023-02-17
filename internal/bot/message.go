@@ -1,9 +1,9 @@
 package bot
 
 import (
+	"bytes"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"io"
-	"os"
 )
 
 type keyboardStyle int
@@ -18,13 +18,15 @@ type botMessage interface {
 }
 
 type videoUploading struct {
-	name string
-	rd   io.ReadCloser
+	name     string
+	mimeType string
+	rd       io.Reader
 }
 
 type photoUploading struct {
-	name  string
-	image []byte
+	name     string
+	mimeType string
+	image    []byte
 }
 
 type photoURL string
@@ -67,12 +69,14 @@ func (m *chatMessage) compose(chatID int64) tgbotapi.Chattable {
 
 	if m.attachment != nil {
 		switch attach := m.attachment.(type) {
-		case photoURL:
-			photoMessage := tgbotapi.NewPhotoUpload(chatID, attach)
+		case *photoURL:
+			photoMessage := tgbotapi.PhotoConfig{}
 			photoMessage.Caption = m.text
+			photoMessage.FileID = string(*attach)
 			photoMessage.ParseMode = "HTML"
 			photoMessage.UseExisting = true
 			photoMessage.ReplyMarkup = keyboard
+			photoMessage.ChatID = chatID
 
 			msg = photoMessage
 
@@ -83,7 +87,7 @@ func (m *chatMessage) compose(chatID int64) tgbotapi.Chattable {
 			}
 
 			photoMessage := tgbotapi.NewPhotoUpload(chatID, fileBytes)
-			photoMessage.MimeType = "image/jpeg"
+			photoMessage.MimeType = attach.mimeType
 			photoMessage.Caption = m.text
 			photoMessage.ParseMode = "HTML"
 			photoMessage.ReplyMarkup = keyboard
@@ -97,7 +101,7 @@ func (m *chatMessage) compose(chatID int64) tgbotapi.Chattable {
 				Reader: attach.rd,
 			}
 			videoMessage := tgbotapi.NewVideoUpload(chatID, fileReader)
-			videoMessage.MimeType = "video/mp4"
+			videoMessage.MimeType = attach.mimeType
 			videoMessage.Caption = m.text
 			videoMessage.ParseMode = "HTML"
 			videoMessage.ReplyMarkup = keyboard
@@ -136,10 +140,11 @@ func (m *chatMessage) setPhotoURL(url string) {
 	m.attachment = &u
 }
 
-func (m *chatMessage) uploadPhoto(name string, image []byte) {
+func (m *chatMessage) uploadPhoto(name, mimeType string, image []byte) {
 	m.attachment = &photoUploading{
-		name:  name,
-		image: image,
+		name:     name,
+		mimeType: mimeType,
+		image:    image,
 	}
 }
 
@@ -147,16 +152,10 @@ func (m *chatMessage) setKeyboardStyle(style keyboardStyle) {
 	m.keyboardStyle = style
 }
 
-func (m *chatMessage) uploadVideo(name, path string) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0644)
-	if err != nil {
-		return err
-	}
-
+func (m *chatMessage) uploadVideo(name, mimeType string, video []byte) {
 	m.attachment = &videoUploading{
-		name: name,
-		rd:   f,
+		name:     name,
+		mimeType: mimeType,
+		rd:       bytes.NewReader(video),
 	}
-
-	return nil
 }

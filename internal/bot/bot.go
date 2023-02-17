@@ -96,10 +96,19 @@ func (bot *Bot) loop() {
 			bot.clearExpiredLinkageCodes()
 
 		case update := <-updates:
+			var message *tgbotapi.Message
 			if update.Message == nil {
+				if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
+					message = update.CallbackQuery.Message
+					message.Text = update.CallbackQuery.Data
+				}
+			} else {
+				message = update.Message
+			}
+			if message == nil {
 				continue
 			}
-			bot.sendMessageToDevice(update.Message)
+			bot.sendMessageToDevice(message)
 
 		case command := <-bot.cmd:
 			switch command.(type) {
