@@ -34,7 +34,7 @@ func (s *Server) Send(message comm.IncomingMessage) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	sess, ok := s.sessions[message.Token]
+	sess, ok := s.sessions[message.DeviceID]
 	if !ok {
 		return comm.ErrDeviceIsNotConnected
 	}

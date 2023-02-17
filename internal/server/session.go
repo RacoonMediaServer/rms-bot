@@ -55,8 +55,8 @@ func (s *session) run(ctx context.Context) {
 			s.l.Logf(logger.ErrorLevel, "deserialize incoming message failed: %s", err)
 			return
 		}
-		s.l.Logf(logger.DebugLevel, "message from client received: %s", msg)
-		s.out <- comm.OutgoingMessage{Token: s.token, Message: msg}
+		s.l.Logf(logger.DebugLevel, "message from device received: %s", msg)
+		s.out <- comm.OutgoingMessage{DeviceID: s.token, Message: msg}
 	}
 }
 
@@ -75,7 +75,7 @@ func (s *session) writeProcess(ctx context.Context) {
 				s.l.Logf(logger.ErrorLevel, "write message failed: %s", err)
 				continue
 			}
-			s.l.Logf(logger.DebugLevel, "message sent to client: %s", msg)
+			s.l.Logf(logger.DebugLevel, "message sent to device: %s", msg)
 		}
 	}
 }

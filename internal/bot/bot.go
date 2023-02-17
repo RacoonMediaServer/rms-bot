@@ -88,7 +88,7 @@ func (bot *Bot) loop() {
 			if msgToUser.Message.Type == communication.MessageType_Interaction {
 				bot.sendMessageToUser(msgToUser)
 			} else if msgToUser.Message.Type == communication.MessageType_AcquiringCode {
-				bot.generateLinkageCode(msgToUser.Token)
+				bot.generateLinkageCode(msgToUser.DeviceID)
 			}
 
 		case <-ticker.C:
@@ -123,7 +123,7 @@ func (bot *Bot) send(msg tgbotapi.Chattable) {
 	}
 }
 func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
-	chat, ok := bot.tokenToChat[message.Token]
+	chat, ok := bot.tokenToChat[message.DeviceID]
 	if !ok {
 		return
 	}
@@ -150,7 +150,7 @@ func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
 	}
 
 	msg := serializeMessage(message)
-	if err := bot.c.Send(comm.IncomingMessage{Token: token, Message: msg}); err != nil {
+	if err := bot.c.Send(comm.IncomingMessage{DeviceID: token, Message: msg}); err != nil {
 		bot.l.Logf(logger.ErrorLevel, "Cannot send message to the device: %s", err)
 		text := ""
 		if errors.Is(err, comm.ErrDeviceIsNotConnected) {

@@ -26,7 +26,7 @@ func (bot *Bot) generateLinkageCode(token string) {
 		generatedAt: time.Now(),
 	}
 	_ = bot.c.Send(comm.IncomingMessage{
-		Token: token,
+		DeviceID: token,
 		Message: &communication.UserMessage{
 			Type:      communication.MessageType_LinkageCode,
 			Text:      code,
