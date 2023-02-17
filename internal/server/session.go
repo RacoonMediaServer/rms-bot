@@ -84,7 +84,11 @@ func (s *session) send(msg *communication.UserMessage) {
 	s.user <- msg
 }
 
-func (s *session) close() {
+func (s *session) drop() {
 	_ = s.conn.Close()
+}
+
+func (s *session) close() {
+	s.drop()
 	close(s.user)
 }

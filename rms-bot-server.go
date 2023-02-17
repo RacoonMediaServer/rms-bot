@@ -61,7 +61,7 @@ func main() {
 
 	srv := server.New(servicemgr.NewServiceFactory(service))
 
-	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New(srv)); err != nil {
+	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New(srv, database)); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
 	}
 

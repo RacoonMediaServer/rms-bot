@@ -31,3 +31,8 @@ func (d *Database) StoreLinkage(linkage model.Linkage) error {
 		return d.conn.Create(&linkage).Error
 	})
 }
+
+func (d *Database) RemoveLinkage(deviceID string) error {
+	l := &model.Linkage{DeviceID: deviceID}
+	return d.conn.Model(l).Unscoped().Delete(l).Error
+}
