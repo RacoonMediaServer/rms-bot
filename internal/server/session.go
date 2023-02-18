@@ -30,6 +30,8 @@ func newSession(l logger.Logger, conn *websocket.Conn, token string, out chan<- 
 
 func (s *session) run(ctx context.Context) {
 	s.l.Log(logger.InfoLevel, "Established")
+	sessionsGauge.Inc()
+	defer sessionsGauge.Dec()
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -57,6 +59,7 @@ func (s *session) run(ctx context.Context) {
 		}
 		s.l.Logf(logger.DebugLevel, "message from device received: %s", msg)
 		s.out <- comm.OutgoingMessage{DeviceID: s.token, Message: msg}
+		outgoingMessagesCounter.WithLabelValues(s.token).Inc()
 	}
 }
 

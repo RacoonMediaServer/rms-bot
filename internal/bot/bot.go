@@ -104,6 +104,9 @@ func (bot *Bot) loop() {
 				}
 			} else {
 				message = update.Message
+				if update.Message.From != nil {
+					incomingMessagesCounter.WithLabelValues(update.Message.From.UserName).Inc()
+				}
 			}
 			if message == nil {
 				continue

@@ -12,5 +12,9 @@
   },
   "bot": {
     "token": ""
+  },
+  "monitor": {
+    "host": "localhost",
+    "port": 2112
   }
 }

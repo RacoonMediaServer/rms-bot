@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
+	"github.com/RacoonMediaServer/rms-packages/pkg/middleware"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
 	"go-micro.dev/v4/logger"
 	"net"
@@ -55,7 +56,7 @@ func New(f servicemgr.ServiceFactory) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/bot", s.handler)
 
-	s.s.Handler = mux
+	s.s.Handler = middleware.PanicHandler(middleware.RequestsCountHandler(middleware.UnauthorizedRequestsCountHandler(mux)))
 	return s
 }
 

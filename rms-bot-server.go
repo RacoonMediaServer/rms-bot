@@ -9,9 +9,11 @@ import (
 	botService "github.com/RacoonMediaServer/rms-bot-server/internal/service"
 	rms_bot_server "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-bot-server"
 	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
+	"net/http"
 )
 
 var Version = "v0.0.0"
@@ -76,5 +78,13 @@ func main() {
 	if err = srv.ListenAndServe(cfg.Http.Host, cfg.Http.Port); err != nil {
 		logger.Fatalf("Cannot start server: %s", err)
 	}
+
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Monitor.Host, cfg.Monitor.Port), nil); err != nil {
+			logger.Fatalf("Cannot bind monitoring endpoint: %s", err)
+		}
+	}()
+
 	srv.Wait()
 }

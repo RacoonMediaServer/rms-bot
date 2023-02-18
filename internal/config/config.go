@@ -2,12 +2,6 @@ package config
 
 import "github.com/RacoonMediaServer/rms-packages/pkg/configuration"
 
-// HTTP is settings of web server
-type HTTP struct {
-	Host string
-	Port int
-}
-
 // Bot is settings of Telegram Bot
 type Bot struct {
 	Token string
@@ -16,7 +10,8 @@ type Bot struct {
 // Configuration represents entire service configuration
 type Configuration struct {
 	Database configuration.Database
-	Http     HTTP
+	Http     configuration.Http
+	Monitor  configuration.Monitor
 	Bot      Bot
 }
 
