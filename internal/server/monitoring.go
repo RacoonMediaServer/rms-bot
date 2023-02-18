@@ -1,6 +1,9 @@
 package server
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
 
 var (
 	sessionsGauge           prometheus.Gauge
@@ -8,14 +11,16 @@ var (
 )
 
 func init() {
-	sessionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	sessionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "rms",
-		Name:      "ws_sessions",
+		Subsystem: "bot_server",
+		Name:      "sessions",
 		Help:      "Count of websocket clients",
 	})
 
-	outgoingMessagesCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+	outgoingMessagesCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace:   "rms",
+		Subsystem:   "bot_server",
 		Name:        "outgoing_messages_count",
 		Help:        "Total count of messages from device",
 		ConstLabels: nil,
