@@ -56,7 +56,7 @@ func New(f servicemgr.ServiceFactory) *Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/bot", s.handler)
 
-	s.s.Handler = middleware.PanicHandler(middleware.RequestsCountHandler(middleware.UnauthorizedRequestsCountHandler(mux)))
+	s.s.Handler = middleware.PanicHandler(middleware.UnauthorizedRequestsCountHandler(mux))
 	return s
 }
 

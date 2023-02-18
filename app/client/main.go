@@ -15,11 +15,13 @@ import (
 func main() {
 	token := flag.String("token", "", "Device token")
 	needCode := flag.Bool("code", false, "Need to acquire linkage code")
+	addr := flag.String("ip", "127.0.0.1", "Host of the bot server")
+	port := flag.Int("port", 8080, "Port of the bot server")
 	flag.Parse()
 
 	u := url.URL{
 		Scheme: "ws",
-		Host:   "127.0.0.1:8080",
+		Host:   fmt.Sprintf("%s:%d", *addr, *port),
 		Path:   "/bot",
 	}
 
