@@ -31,5 +31,6 @@ func serializeMessage(msg *tgbotapi.Message) *communication.UserMessage {
 	return &communication.UserMessage{
 		Text:      msg.Text,
 		Timestamp: timestamppb.New(msg.Time()),
+		User:      int32(msg.From.ID),
 	}
 }

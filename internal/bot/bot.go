@@ -15,21 +15,24 @@ import (
 
 // Database is a set of methods for accessing table, which map devices to Telegram users
 type Database interface {
-	LoadLinkages() (map[string]int64, error)
-	StoreLinkage(linkage model.Linkage) error
+	LoadLinkages() (map[string]model.Linkage, error)
+	LinkUserToDevice(deviceID string, u model.DeviceUser) error
 }
 
 // Bot implements a Telegram bot
 type Bot struct {
-	l            logger.Logger
-	wg           sync.WaitGroup
-	api          *tgbotapi.BotAPI
-	cmd          chan interface{}
-	c            comm.DeviceCommunicator
-	db           Database
-	tokenToChat  map[string]int64
-	chatToToken  map[int64]string
-	linkageCodes map[string]linkageCode
+	l   logger.Logger
+	wg  sync.WaitGroup
+	api *tgbotapi.BotAPI
+	cmd chan interface{}
+	c   comm.DeviceCommunicator
+	db  Database
+
+	linkages     map[string]model.Linkage
+	userToDevice map[int]string
+
+	codeToDevice map[string]linkageCode
+	deviceToCode map[string]string
 }
 
 type stopCommand struct{}
@@ -40,17 +43,20 @@ func NewBot(token string, database Database, c comm.DeviceCommunicator) (*Bot, e
 		l:            logger.DefaultLogger.Fields(map[string]interface{}{"from": "bot"}),
 		db:           database,
 		c:            c,
-		tokenToChat:  map[string]int64{},
-		chatToToken:  map[int64]string{},
-		linkageCodes: map[string]linkageCode{},
+		linkages:     map[string]model.Linkage{},
+		userToDevice: map[int]string{},
+		codeToDevice: map[string]linkageCode{},
+		deviceToCode: map[string]string{},
 	}
 
-	bot.tokenToChat, err = database.LoadLinkages()
+	bot.linkages, err = database.LoadLinkages()
 	if err != nil {
 		return nil, fmt.Errorf("load linkages failed: %w", err)
 	}
-	for k, v := range bot.tokenToChat {
-		bot.chatToToken[v] = k
+	for id, l := range bot.linkages {
+		for _, u := range l.Users {
+			bot.userToDevice[u.UserID] = id
+		}
 	}
 
 	bot.api, err = tgbotapi.NewBotAPI(token)
@@ -101,6 +107,7 @@ func (bot *Bot) loop() {
 				if update.CallbackQuery != nil && update.CallbackQuery.Message != nil {
 					message = update.CallbackQuery.Message
 					message.Text = update.CallbackQuery.Data
+					message.From = update.CallbackQuery.From
 				}
 			} else {
 				message = update.Message
@@ -135,25 +142,29 @@ func (bot *Bot) send(msg tgbotapi.Chattable) {
 	}
 }
 func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
-	chat, ok := bot.tokenToChat[message.DeviceID]
+	l, ok := bot.linkages[message.DeviceID]
 	if !ok {
 		return
 	}
-	msg := deserializeMessage(chat, message.Message)
-	bot.send(msg)
+	for _, u := range l.Users {
+		if message.Message.User == 0 || message.Message.User == int32(u.UserID) {
+			msg := deserializeMessage(u.ChatID, message.Message)
+			bot.send(msg)
+		}
+	}
 }
 
 func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
-	token, ok := bot.chatToToken[message.Chat.ID]
+	token, ok := bot.userToDevice[message.From.ID]
 	if !ok {
-		if code, ok := bot.linkageCodes[message.Text]; ok {
-			if err := bot.linkUserToDevice(message.Chat.ID, code); err != nil {
-				bot.l.Logf(logger.ErrorLevel, "Link %d to device %s failed: %s", message.Chat.ID, code.token, err)
+		if code, ok := bot.codeToDevice[message.Text]; ok {
+			if err := bot.linkUserToDevice(message.From, message.Chat.ID, code); err != nil {
+				bot.l.Logf(logger.ErrorLevel, "Link %d to device %s failed: %s", message.Chat.ID, code.device, err)
 				bot.sendTextMessage(message.Chat.ID, "Не удалось связать чат с устройством")
 				return
 			}
 
-			bot.l.Logf(logger.InfoLevel, "Device '%s' linked to chat %d", code.token, message.Chat.ID)
+			bot.l.Logf(logger.InfoLevel, "Device '%s' linked to chat %d", code.device, message.Chat.ID)
 			bot.sendTextMessage(message.Chat.ID, "Текущий чат связан с устройством. Ура, ничего не сломалось...")
 			return
 		}

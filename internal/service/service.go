@@ -12,7 +12,7 @@ type Server interface {
 }
 
 type Database interface {
-	RemoveLinkage(deviceID string) error
+	RemoveDevice(deviceID string) error
 }
 
 type service struct {
@@ -24,7 +24,7 @@ type service struct {
 func (s service) DropSession(ctx context.Context, request *rms_bot_server.DropSessionRequest, empty *emptypb.Empty) error {
 	s.l.Logf(logger.InfoLevel, "Drop session %s", request.Token)
 	s.server.DropSession(request.Token)
-	if err := s.db.RemoveLinkage(request.Token); err != nil {
+	if err := s.db.RemoveDevice(request.Token); err != nil {
 		s.l.Logf(logger.WarnLevel, "Cannot drop device linkage: %s", err)
 	}
 	return nil

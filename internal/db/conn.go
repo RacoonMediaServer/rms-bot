@@ -17,7 +17,11 @@ func Connect(config configuration.Database) (*Database, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if err = db.AutoMigrate(&model.Linkage{}); err != nil {
+		return nil, fmt.Errorf("update database failed: %s", err)
+	}
+	if err = db.AutoMigrate(&model.DeviceUser{}); err != nil {
 		return nil, fmt.Errorf("update database failed: %s", err)
 	}
 	return &Database{conn: db}, nil

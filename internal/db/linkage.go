@@ -2,37 +2,39 @@ package db
 
 import (
 	"github.com/RacoonMediaServer/rms-bot-server/internal/model"
-	"gorm.io/gorm"
 )
 
-func (d *Database) LoadLinkages() (map[string]int64, error) {
-	linkages := make([]model.Linkage, 0)
-	if err := d.conn.Find(&linkages).Error; err != nil {
-		return nil, err
+func (d *Database) LoadLinkages() (map[string]model.Linkage, error) {
+	var linkages []model.Linkage
+	result := map[string]model.Linkage{}
+
+	err := d.conn.Model(&model.Linkage{}).Preload("Users").Find(&linkages).Error
+	if err == nil {
+		for _, l := range linkages {
+			result[l.DeviceID] = l
+		}
 	}
-	result := map[string]int64{}
-	for _, l := range linkages {
-		result[l.DeviceID] = l.ChatID
-	}
-	return result, nil
+	return result, err
 }
 
-func (d *Database) StoreLinkage(linkage model.Linkage) error {
-	return d.conn.Transaction(func(tx *gorm.DB) error {
-		// удаляем все старые привязки, если они есть
-		if err := d.conn.Model(&model.Linkage{}).Unscoped().Delete(&linkage).Error; err != nil {
-			return err
-		}
-
-		if err := d.conn.Model(&model.Linkage{}).Unscoped().Where("chat_id = ?", linkage.ChatID).Delete(&model.Linkage{}).Error; err != nil {
-			return err
-		}
-
-		return d.conn.Create(&linkage).Error
-	})
+func (d *Database) LinkUserToDevice(deviceID string, u model.DeviceUser) error {
+	l := model.Linkage{DeviceID: deviceID}
+	if err := d.conn.FirstOrCreate(&l).Error; err != nil {
+		return err
+	}
+	return d.conn.Model(&l).Association("Users").Append(&u)
 }
 
-func (d *Database) RemoveLinkage(deviceID string) error {
-	l := &model.Linkage{DeviceID: deviceID}
-	return d.conn.Model(l).Unscoped().Delete(l).Error
+func (d *Database) UnlinkUser(deviceID string, u model.DeviceUser) error {
+	l := model.Linkage{DeviceID: deviceID}
+	return d.conn.Model(&l).Association("Users").Delete(&u)
+}
+
+func (d *Database) RemoveDevice(deviceID string) error {
+	l := model.Linkage{DeviceID: deviceID}
+	if err := d.conn.Model(&l).Association("Users").Clear(); err != nil {
+		return err
+	}
+	d.conn.Delete(&l)
+	return nil
 }
