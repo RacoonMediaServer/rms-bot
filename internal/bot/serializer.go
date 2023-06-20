@@ -3,7 +3,6 @@ package bot
 import (
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func deserializeMessage(chat int64, msg *communication.BotMessage) tgbotapi.Chattable {
@@ -29,8 +28,7 @@ func deserializeMessage(chat int64, msg *communication.BotMessage) tgbotapi.Chat
 
 func serializeMessage(msg *tgbotapi.Message) *communication.UserMessage {
 	return &communication.UserMessage{
-		Text:      msg.Text,
-		Timestamp: timestamppb.New(msg.Time()),
-		User:      int32(msg.From.ID),
+		Text: msg.Text,
+		User: int32(msg.From.ID),
 	}
 }

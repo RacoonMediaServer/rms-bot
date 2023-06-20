@@ -7,7 +7,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/teris-io/shortid"
 	"go-micro.dev/v4/logger"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
@@ -34,9 +33,8 @@ func (bot *Bot) generateLinkageCode(device string) {
 	_ = bot.c.Send(comm.IncomingMessage{
 		DeviceID: device,
 		Message: &communication.UserMessage{
-			Type:      communication.MessageType_LinkageCode,
-			Text:      code,
-			Timestamp: timestamppb.Now(),
+			Type: communication.MessageType_LinkageCode,
+			Text: code,
 		},
 	})
 }
