@@ -56,6 +56,9 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	defer sess.close()
 
 	s.mu.Lock()
+	if existing, ok := s.sessions[token]; ok {
+		existing.drop()
+	}
 	s.sessions[token] = sess
 	s.mu.Unlock()
 
