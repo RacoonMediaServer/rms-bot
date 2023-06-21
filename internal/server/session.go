@@ -45,6 +45,11 @@ func (s *session) run(ctx context.Context) {
 		s.writeProcess(ctx)
 	}()
 
+	s.out <- getDeviceConnectedMessage(s.token)
+	defer func() {
+		s.out <- getDeviceDisconnectedMessage(s.token)
+	}()
+
 	for {
 		// читаем сообщения от клиентского устройства
 		_, buf, err := s.conn.ReadMessage()
