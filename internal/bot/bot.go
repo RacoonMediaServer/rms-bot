@@ -17,6 +17,7 @@ import (
 type Database interface {
 	LoadLinkages() (map[string]model.Linkage, error)
 	LinkUserToDevice(deviceID string, u model.DeviceUser) error
+	UnlinkUser(deviceID string, u model.DeviceUser) error
 }
 
 // Bot implements a Telegram bot
@@ -95,6 +96,8 @@ func (bot *Bot) loop() {
 				bot.sendMessageToUser(msgToUser)
 			} else if msgToUser.Message.Type == communication.MessageType_AcquiringCode {
 				bot.generateLinkageCode(msgToUser.DeviceID)
+			} else if msgToUser.Message.Type == communication.MessageType_UnlinkUser {
+				bot.unlinkUserFromDevice(int(msgToUser.Message.User), msgToUser.DeviceID)
 			}
 
 		case <-ticker.C:

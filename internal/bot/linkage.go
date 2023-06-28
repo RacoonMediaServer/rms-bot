@@ -70,3 +70,32 @@ func (bot *Bot) linkUserToDevice(user *tgbotapi.User, chatID int64, code linkage
 
 	return nil
 }
+
+func (bot *Bot) unlinkUserFromDevice(user int, device string) {
+	l, ok := bot.linkages[device]
+	if !ok {
+		bot.l.Logf(logger.WarnLevel, "Cannot unlink user %d from device %s: no linkage", user, device)
+		return
+	}
+
+	userIndex := -1
+	for i, u := range l.Users {
+		if u.UserID == user {
+			userIndex = i
+			break
+		}
+	}
+	if userIndex == -1 {
+		bot.l.Logf(logger.WarnLevel, "Cannot unlink user %d from device %s: not assigned", user, device)
+		return
+	}
+
+	if err := bot.db.UnlinkUser(device, l.Users[userIndex]); err != nil {
+		bot.l.Logf(logger.WarnLevel, "Cannot unlink user %d from device %s: %s", user, device, err)
+		return
+	}
+
+	delete(bot.userToDevice, user)
+	l.Users = append(l.Users[:userIndex], l.Users[userIndex+1:]...)
+	bot.linkages[device] = l
+}
