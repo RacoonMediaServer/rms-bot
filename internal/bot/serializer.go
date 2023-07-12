@@ -3,6 +3,7 @@ package bot
 import (
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"net/http"
 )
 
 func deserializeMessage(chat int64, msg *communication.BotMessage) tgbotapi.Chattable {
@@ -16,7 +17,15 @@ func deserializeMessage(chat int64, msg *communication.BotMessage) tgbotapi.Chat
 	if msg.Attachment != nil {
 		switch msg.Attachment.Type {
 		case communication.Attachment_PhotoURL:
-			m.setPhotoURL(string(msg.Attachment.Content))
+			// Зачем скачивать фото? обход блокировки российского IP от TMDb...
+			// будет работать, если сервер на зарубежном хостинге
+			u := string(msg.Attachment.Content)
+			photo, err := downloadPhoto(u)
+			if err == nil {
+				m.uploadPhoto("photo", http.DetectContentType(photo), photo)
+			} else {
+				m.setPhotoURL(u)
+			}
 		case communication.Attachment_Photo:
 			m.uploadPhoto("photo", msg.Attachment.MimeType, msg.Attachment.Content)
 		case communication.Attachment_Video:
