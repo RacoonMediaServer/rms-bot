@@ -65,6 +65,10 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	sess.run(r.Context())
 
 	s.mu.Lock()
-	delete(s.sessions, token)
+	if existing, ok := s.sessions[token]; ok {
+		if existing == sess {
+			delete(s.sessions, token)
+		}
+	}
 	s.mu.Unlock()
 }
