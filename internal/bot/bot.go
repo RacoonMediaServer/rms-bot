@@ -175,7 +175,7 @@ func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
 		return
 	}
 
-	msg := serializeMessage(message)
+	msg := bot.serializeMessage(message)
 	if err := bot.c.Send(comm.IncomingMessage{DeviceID: token, Message: msg}); err != nil {
 		bot.l.Logf(logger.ErrorLevel, "Cannot send message to the device: %s", err)
 		text := ""
