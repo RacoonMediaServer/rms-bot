@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 const downloadTimeout = 10 * time.Second
 
-func downloadPhoto(url string) (content []byte, err error) {
+func download(url string) (content []byte, err error) {
 	var req *http.Request
 	var resp *http.Response
 
@@ -22,6 +23,9 @@ func downloadPhoto(url string) (content []byte, err error) {
 		return
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("invalid status code: %d", resp.StatusCode)
+	}
 
 	content, err = io.ReadAll(resp.Body)
 	return
