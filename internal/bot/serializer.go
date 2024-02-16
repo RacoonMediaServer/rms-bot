@@ -76,6 +76,7 @@ func (bot *Bot) serializeMessage(msg *tgbotapi.Message) *communication.UserMessa
 		if err != nil {
 			bot.l.Logf(logger.ErrorLevel, "Download user file failed: %s", err)
 		}
+		msgToDevice.Text = msg.Caption
 	}
 
 	return msgToDevice
