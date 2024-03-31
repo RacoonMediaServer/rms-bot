@@ -58,7 +58,7 @@ func (bot *Bot) serializeMessage(msg *tgbotapi.Message) *communication.UserMessa
 		fileID = &msg.Audio.FileID
 	} else if msg.Voice != nil {
 		msgToDevice.Attachment = &communication.Attachment{
-			Type:     communication.Attachment_Audio,
+			Type:     communication.Attachment_Voice,
 			MimeType: msg.Voice.MimeType,
 		}
 		fileID = &msg.Voice.FileID
