@@ -8,7 +8,7 @@ import (
 )
 
 func deserializeMessage(chat int64, msg *communication.BotMessage) tgbotapi.Chattable {
-	m := newMessage(msg.Text, 0)
+	m := newMessage(msg.Text, int(msg.ReplyID))
 	for _, btn := range msg.Buttons {
 		m.addButton(btn.Title, btn.Command)
 	}
@@ -38,8 +38,12 @@ func deserializeMessage(chat int64, msg *communication.BotMessage) tgbotapi.Chat
 
 func (bot *Bot) serializeMessage(msg *tgbotapi.Message) *communication.UserMessage {
 	msgToDevice := &communication.UserMessage{
-		Text: msg.Text,
-		User: int32(msg.From.ID),
+		Text:      msg.Text,
+		User:      int32(msg.From.ID),
+		MessageID: int32(msg.MessageID),
+	}
+	if msg.ReplyToMessage != nil {
+		msgToDevice.ReplyID = int32(msg.ReplyToMessage.MessageID)
 	}
 
 	var fileID *string
