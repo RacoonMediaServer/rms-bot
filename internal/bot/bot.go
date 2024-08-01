@@ -119,7 +119,7 @@ func (bot *Bot) loop() {
 					incomingMessagesCounter.WithLabelValues(update.Message.From.UserName).Inc()
 				}
 			}
-			if message == nil {
+			if message == nil || message.From.ID == bot.api.Self.ID {
 				continue
 			}
 			bot.sendMessageToDevice(message)
