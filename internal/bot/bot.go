@@ -3,11 +3,12 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
-	"sync"
-	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"go-micro.dev/v4/logger"
@@ -138,12 +139,15 @@ func (bot *Bot) Stop() {
 	bot.wg.Wait()
 }
 
-func (bot *Bot) send(msg tgbotapi.Chattable) {
-	_, err := bot.api.Send(msg)
+func (bot *Bot) send(msg tgbotapi.Chattable) int {
+	tgMsg, err := bot.api.Send(msg)
 	if err != nil {
 		bot.l.Logf(logger.ErrorLevel, "Send message failed: %s", err)
+		return 0
 	}
+	return tgMsg.MessageID
 }
+
 func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
 	l, ok := bot.linkages[message.DeviceID]
 	if !ok {
@@ -152,7 +156,22 @@ func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
 	for _, u := range l.Users {
 		if message.Message.User == 0 || message.Message.User == int32(u.UserID) {
 			msg := deserializeMessage(u.ChatID, message.Message)
-			bot.send(msg)
+			msgId := bot.send(msg)
+			if message.Message.Pin == communication.BotMessage_ThisMessage {
+				cfg := tgbotapi.PinChatMessageConfig{
+					ChatID:    u.ChatID,
+					MessageID: msgId,
+				}
+				_, err := bot.api.PinChatMessage(cfg)
+				if err != nil {
+					bot.l.Logf(logger.WarnLevel, "Pin message %d failed: %s", msgId, err)
+				}
+			} else if message.Message.Pin == communication.BotMessage_Drop {
+				_, err := bot.api.UnpinChatMessage(tgbotapi.UnpinChatMessageConfig{ChatID: u.ChatID})
+				if err != nil {
+					bot.l.Logf(logger.WarnLevel, "Unpin message failed: %s", err)
+				}
+			}
 		}
 	}
 }
