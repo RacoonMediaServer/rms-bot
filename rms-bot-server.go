@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/RacoonMediaServer/rms-bot-server/internal/bot"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/config"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/db"
@@ -13,7 +15,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"go-micro.dev/v4"
 	"go-micro.dev/v4/logger"
-	"net/http"
+
+	// Plugins
+	_ "github.com/go-micro/plugins/v4/registry/etcd"
 )
 
 var Version = "v0.0.0"
