@@ -3,6 +3,8 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
@@ -167,7 +169,9 @@ func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
 					bot.l.Logf(logger.WarnLevel, "Pin message %d failed: %s", msgId, err)
 				}
 			} else if message.Message.Pin == communication.BotMessage_Drop {
-				_, err := bot.api.UnpinChatMessage(tgbotapi.UnpinChatMessageConfig{ChatID: u.ChatID})
+				params := url.Values{}
+				params.Add("chat_id", strconv.FormatInt(u.ChatID, 10))
+				_, err := bot.api.MakeRequest("unpinAllChatMessages", params)
 				if err != nil {
 					bot.l.Logf(logger.WarnLevel, "Unpin message failed: %s", err)
 				}
