@@ -190,6 +190,7 @@ func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
 			bot.sendTextMessage(message.Chat.ID, "Текущий чат связан с устройством. Ура, ничего не сломалось...")
 			return
 		}
+		bot.l.Logf(logger.WarnLevel, "Unlinked message, user id = %s [%d], text = '%s'", message.From.UserName, message.From.ID, message.Text)
 		bot.sendTextMessage(message.Chat.ID, "Необходимо привязать устройство к текущему чату. Для этого необходимо ввести здесь код из веб-интерфейса")
 		return
 	}
