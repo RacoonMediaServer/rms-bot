@@ -36,7 +36,7 @@ func (s *Server) authorize(ctx context.Context, token string) (bool, error) {
 func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 	l := s.l.Fields(map[string]interface{}{"addr": r.RemoteAddr})
 	for key, val := range r.Header {
-		l.Logf(logger.DebugLevel, "Got header %s = %+v", key, val)
+		l.Logf(logger.InfoLevel, "Got header %s = %+v", key, val)
 	}
 	token := r.Header.Get("X-Token")
 	if ok, err := s.authorize(r.Context(), token); !ok {
