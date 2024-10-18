@@ -11,8 +11,8 @@ type Bot struct {
 type Configuration struct {
 	Database configuration.Database
 	Http     configuration.Http
-	Monitor  configuration.Monitor
 	Bot      Bot
+	Debug    configuration.Debug
 }
 
 var config Configuration

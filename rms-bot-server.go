@@ -54,11 +54,11 @@ func main() {
 		}),
 	)
 
-	if useDebug {
+	cfg := config.Config()
+
+	if useDebug || config.Config().Debug.Verbose {
 		_ = logger.Init(logger.WithLevel(logger.DebugLevel))
 	}
-
-	cfg := config.Config()
 
 	database, err := db.Connect(cfg.Database)
 	if err != nil {
@@ -83,12 +83,15 @@ func main() {
 		logger.Fatalf("Cannot start server: %s", err)
 	}
 
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.Monitor.Host, cfg.Monitor.Port), nil); err != nil {
-			logger.Fatalf("Cannot bind monitoring endpoint: %s", err)
-		}
-	}()
+	monitorConfig := cfg.Debug.Monitor
+	if monitorConfig.Enabled {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			if err := http.ListenAndServe(fmt.Sprintf("%s:%d", monitorConfig.Host, monitorConfig.Port), nil); err != nil {
+				logger.Fatalf("Cannot bind monitoring endpoint: %s", err)
+			}
+		}()
+	}
 
 	srv.Wait()
 }

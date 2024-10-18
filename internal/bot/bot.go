@@ -181,6 +181,7 @@ func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
 }
 
 func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
+	bot.l.Logf(logger.DebugLevel, "Got message from Telegram: '%s' [@%s, %d]", message.Text, message.From.UserName, message.From.ID)
 	token, ok := bot.userToDevice[message.From.ID]
 	if !ok {
 		if code, ok := bot.codeToDevice[message.Text]; ok {
