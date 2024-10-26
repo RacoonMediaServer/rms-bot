@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"time"
 
@@ -15,22 +15,54 @@ var upgrader = websocket.Upgrader{
 	HandshakeTimeout: 10 * time.Second,
 }
 
-func (s *Server) authorize(ctx context.Context, token string) (bool, error) {
+type authResult struct {
+	userId  string
+	token   string
+	selfReg bool
+}
+
+func (s *Server) authorize(ctx context.Context, token string) (authResult, error) {
 	if token == "" {
-		return false, nil
-	}
-
-	resp, err := s.f.NewUsers().GetPermissions(ctx, &rms_users.GetPermissionsRequest{Token: token})
-	if err != nil {
-		return false, fmt.Errorf("token validation failed: %w", err)
-	}
-	for _, perm := range resp.Perms {
-		if perm == rms_users.Permissions_ConnectingToTheBot {
-			return true, nil
+		if s.selfRegistration {
+			return s.performSelfRegistration(ctx)
 		}
+		return authResult{}, errors.New("invalid empty token")
 	}
 
-	return false, nil
+	req := rms_users.CheckPermissionsRequest{Token: token, Perms: []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot}}
+	resp, err := s.f.NewUsers().CheckPermissions(ctx, &req)
+	if err != nil {
+		return authResult{}, err
+	}
+
+	if !resp.Allowed {
+		return authResult{}, errors.New("access denied")
+	}
+
+	result := authResult{
+		userId:  resp.UserId,
+		token:   token,
+		selfReg: false,
+	}
+
+	return result, nil
+}
+
+func (s *Server) performSelfRegistration(ctx context.Context) (authResult, error) {
+	req := rms_users.User{
+		Perms: []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot},
+	}
+	resp, err := s.f.NewUsers().RegisterUser(ctx, &req)
+	if err != nil {
+		return authResult{}, err
+	}
+
+	result := authResult{
+		userId:  resp.UserId,
+		token:   resp.Token,
+		selfReg: true,
+	}
+	return result, nil
 }
 
 func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
@@ -39,13 +71,9 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		l.Logf(logger.InfoLevel, "Got header %s = %+v", key, val)
 	}
 	token := r.Header.Get("X-Token")
-	if ok, err := s.authorize(r.Context(), token); !ok {
-		if err != nil {
-			l.Logf(logger.ErrorLevel, "Authorization failed: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		l.Log(logger.ErrorLevel, "Forbidden")
+	result, err := s.authorize(r.Context(), token)
+	if err != nil {
+		l.Logf(logger.ErrorLevel, "Forbidden: %s", err)
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -57,22 +85,22 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess := newSession(s.l, conn, token, s.ch)
+	sess := newSession(s.l, conn, result.userId, s.ch)
 	defer sess.close()
 
 	s.mu.Lock()
-	if existing, ok := s.sessions[token]; ok {
+	if existing, ok := s.sessions[result.userId]; ok {
 		existing.drop()
 	}
-	s.sessions[token] = sess
+	s.sessions[result.userId] = sess
 	s.mu.Unlock()
 
-	sess.run(r.Context())
+	sess.run(r.Context(), result)
 
 	s.mu.Lock()
-	if existing, ok := s.sessions[token]; ok {
+	if existing, ok := s.sessions[result.userId]; ok {
 		if existing == sess {
-			delete(s.sessions, token)
+			delete(s.sessions, result.userId)
 		}
 	}
 	s.mu.Unlock()

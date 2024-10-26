@@ -11,7 +11,8 @@
     "port": 8080
   },
   "bot": {
-    "token": ""
+    "token": "",
+    "selfRegistration": false
   },
   "debug": {
     "verbose": false,

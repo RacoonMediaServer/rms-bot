@@ -65,7 +65,7 @@ func main() {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
 
-	srv := server.New(servicemgr.NewServiceFactory(service))
+	srv := server.New(servicemgr.NewServiceFactory(service), cfg.Bot.SelfRegistration)
 
 	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New(srv, database)); err != nil {
 		logger.Fatalf("Register service failed: %s", err)

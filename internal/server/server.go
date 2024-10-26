@@ -4,24 +4,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
-	"github.com/RacoonMediaServer/rms-packages/pkg/middleware"
-	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
-	"go-micro.dev/v4/logger"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
+	"github.com/RacoonMediaServer/rms-packages/pkg/middleware"
+	"github.com/RacoonMediaServer/rms-packages/pkg/service/servicemgr"
+	"go-micro.dev/v4/logger"
 )
 
 const maxMessageQueueSize = 1000
 
 type Server struct {
-	l  logger.Logger
-	f  servicemgr.ServiceFactory
-	s  http.Server
-	wg sync.WaitGroup
-	ch chan comm.OutgoingMessage
+	l                logger.Logger
+	f                servicemgr.ServiceFactory
+	s                http.Server
+	selfRegistration bool
+	wg               sync.WaitGroup
+	ch               chan comm.OutgoingMessage
 
 	mu       sync.RWMutex
 	sessions map[string]*session
@@ -45,12 +47,13 @@ func (s *Server) Send(message comm.IncomingMessage) error {
 	return nil
 }
 
-func New(f servicemgr.ServiceFactory) *Server {
+func New(f servicemgr.ServiceFactory, selfRegistration bool) *Server {
 	s := &Server{
-		l:        logger.DefaultLogger.Fields(map[string]interface{}{"from": "server"}),
-		f:        f,
-		sessions: make(map[string]*session),
-		ch:       make(chan comm.OutgoingMessage, maxMessageQueueSize),
+		l:                logger.DefaultLogger.Fields(map[string]interface{}{"from": "server"}),
+		f:                f,
+		sessions:         make(map[string]*session),
+		ch:               make(chan comm.OutgoingMessage, maxMessageQueueSize),
+		selfRegistration: selfRegistration,
 	}
 
 	mux := http.NewServeMux()

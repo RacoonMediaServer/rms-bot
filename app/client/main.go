@@ -3,13 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
-	"github.com/gorilla/websocket"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
+	"github.com/gorilla/websocket"
+	"google.golang.org/protobuf/proto"
 )
 
 func main() {
@@ -65,7 +65,6 @@ func acquireCode(conn *websocket.Conn) {
 }
 
 func send(conn *websocket.Conn, msg *communication.BotMessage) {
-	msg.Timestamp = timestamppb.Now()
 	msg.Buttons = append(msg.Buttons, &communication.Button{
 		Title:   "One",
 		Command: "1",

@@ -4,7 +4,8 @@ import "github.com/RacoonMediaServer/rms-packages/pkg/configuration"
 
 // Bot is settings of Telegram Bot
 type Bot struct {
-	Token string
+	Token            string
+	SelfRegistration bool `json:"selfRegistration"`
 }
 
 // Configuration represents entire service configuration

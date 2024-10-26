@@ -2,33 +2,34 @@ package server
 
 import (
 	"context"
+	"sync"
+
 	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
 	"github.com/gorilla/websocket"
 	"go-micro.dev/v4/logger"
 	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 type session struct {
-	l     logger.Logger
-	conn  *websocket.Conn
-	token string
-	user  chan *communication.UserMessage
-	out   chan<- comm.OutgoingMessage
+	l      logger.Logger
+	conn   *websocket.Conn
+	userId string
+	user   chan *communication.UserMessage
+	out    chan<- comm.OutgoingMessage
 }
 
-func newSession(l logger.Logger, conn *websocket.Conn, token string, out chan<- comm.OutgoingMessage) *session {
+func newSession(l logger.Logger, conn *websocket.Conn, userId string, out chan<- comm.OutgoingMessage) *session {
 	return &session{
-		l:     l.Fields(map[string]interface{}{"token": token}),
-		conn:  conn,
-		token: token,
-		user:  make(chan *communication.UserMessage, maxMessageQueueSize),
-		out:   out,
+		l:      l.Fields(map[string]interface{}{"userId": userId}),
+		conn:   conn,
+		userId: userId,
+		user:   make(chan *communication.UserMessage, maxMessageQueueSize),
+		out:    out,
 	}
 }
 
-func (s *session) run(ctx context.Context) {
+func (s *session) run(ctx context.Context, ar authResult) {
 	s.l.Log(logger.InfoLevel, "Established")
 	sessionsGauge.Inc()
 	defer sessionsGauge.Dec()
@@ -45,16 +46,20 @@ func (s *session) run(ctx context.Context) {
 		s.writeProcess(ctx)
 	}()
 
-	s.out <- getDeviceConnectedMessage(s.token)
+	if ar.selfReg {
+		s.user <- &communication.UserMessage{Type: communication.MessageType_DemoApiKey, Text: ar.token}
+	}
+
+	s.out <- getDeviceConnectedMessage(s.userId)
 	defer func() {
-		s.out <- getDeviceDisconnectedMessage(s.token)
+		s.out <- getDeviceDisconnectedMessage(s.userId)
 	}()
 
 	for {
 		// читаем сообщения от клиентского устройства
 		_, buf, err := s.conn.ReadMessage()
 		if err != nil {
-			s.l.Logf(logger.ErrorLevel, "pick message failed: %s", s.token, err)
+			s.l.Logf(logger.ErrorLevel, "pick message failed: %s", s.userId, err)
 			return
 		}
 		msg := &communication.BotMessage{}
@@ -63,8 +68,8 @@ func (s *session) run(ctx context.Context) {
 			return
 		}
 		s.l.Logf(logger.DebugLevel, "message from device received: %s", msg)
-		s.out <- comm.OutgoingMessage{DeviceID: s.token, Message: msg}
-		outgoingMessagesCounter.WithLabelValues(s.token).Inc()
+		s.out <- comm.OutgoingMessage{DeviceID: s.userId, Message: msg}
+		outgoingMessagesCounter.WithLabelValues(s.userId).Inc()
 	}
 }
 
