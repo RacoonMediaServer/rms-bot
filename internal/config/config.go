@@ -12,7 +12,7 @@ type Bot struct {
 type Configuration struct {
 	Database configuration.Database
 	Http     configuration.Http
-	Bot      Bot
+	Bots     map[string]*Bot
 	Debug    configuration.Debug
 }
 
