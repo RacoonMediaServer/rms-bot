@@ -18,49 +18,38 @@ import (
 const maxMessageQueueSize = 1000
 
 type Server struct {
-	l                logger.Logger
-	f                servicemgr.ServiceFactory
-	s                http.Server
-	selfRegistration bool
-	wg               sync.WaitGroup
-	ch               chan comm.OutgoingMessage
+	l  logger.Logger
+	s  http.Server
+	wg sync.WaitGroup
 
-	mu       sync.RWMutex
-	sessions map[string]*session
+	endpoints map[string]*endpoint
 }
 
-func (s *Server) OutgoingChannel() <-chan comm.OutgoingMessage {
-	return s.ch
-}
-
-func (s *Server) Send(message comm.IncomingMessage) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	sess, ok := s.sessions[message.DeviceID]
-	if !ok {
-		return comm.ErrDeviceIsNotConnected
-	}
-
-	sess.send(message.Message)
-
-	return nil
-}
-
-func New(f servicemgr.ServiceFactory, selfRegistration bool) *Server {
+func New(f servicemgr.ServiceFactory, endpoints []comm.Endpoint) *Server {
 	s := &Server{
-		l:                logger.DefaultLogger.Fields(map[string]interface{}{"from": "server"}),
-		f:                f,
-		sessions:         make(map[string]*session),
-		ch:               make(chan comm.OutgoingMessage, maxMessageQueueSize),
-		selfRegistration: selfRegistration,
+		l:         logger.DefaultLogger.Fields(map[string]interface{}{"from": "server"}),
+		endpoints: map[string]*endpoint{},
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/bot", s.handler)
+
+	for _, endpoint := range endpoints {
+		e := newEndpoint(s.l.Fields(map[string]interface{}{"endpoint": endpoint.ID}), f, endpoint.SelfRegistration)
+		s.endpoints[endpoint.ID] = e
+
+		mux.HandleFunc("/bot/"+endpoint.ID, e.handler)
+	}
 
 	s.s.Handler = middleware.PanicHandler(middleware.UnauthorizedRequestsCountHandler(mux))
 	return s
+}
+
+func (s *Server) GetEndpoint(id string) (comm.DeviceCommunicator, error) {
+	e, ok := s.endpoints[id]
+	if !ok {
+		return nil, errors.New("unknown endpoint")
+	}
+	return e, nil
 }
 
 func (s *Server) ListenAndServe(host string, port int) error {
@@ -93,15 +82,10 @@ func (s *Server) Wait() {
 	s.wg.Wait()
 }
 
-func (s *Server) DropSession(token string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	sess, ok := s.sessions[token]
+func (s *Server) DropSession(endpoint, user string) {
+	e, ok := s.endpoints[endpoint]
 	if !ok {
 		return
 	}
-
-	sess.drop()
-	delete(s.sessions, token)
+	e.dropSession(user)
 }

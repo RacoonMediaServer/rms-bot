@@ -21,16 +21,16 @@ type authResult struct {
 	selfReg bool
 }
 
-func (s *Server) authorize(ctx context.Context, token string) (authResult, error) {
+func (e *endpoint) authorize(ctx context.Context, token string) (authResult, error) {
 	if token == "" {
-		if s.selfRegistration {
-			return s.performSelfRegistration(ctx)
+		if e.selfReg {
+			return e.performSelfRegistration(ctx)
 		}
 		return authResult{}, errors.New("invalid empty token")
 	}
 
 	req := rms_users.CheckPermissionsRequest{Token: token, Perms: []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot}}
-	resp, err := s.f.NewUsers().CheckPermissions(ctx, &req)
+	resp, err := e.f.NewUsers().CheckPermissions(ctx, &req)
 	if err != nil {
 		return authResult{}, err
 	}
@@ -48,11 +48,11 @@ func (s *Server) authorize(ctx context.Context, token string) (authResult, error
 	return result, nil
 }
 
-func (s *Server) performSelfRegistration(ctx context.Context) (authResult, error) {
+func (e *endpoint) performSelfRegistration(ctx context.Context) (authResult, error) {
 	req := rms_users.User{
 		Perms: []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot},
 	}
-	resp, err := s.f.NewUsers().RegisterUser(ctx, &req)
+	resp, err := e.f.NewUsers().RegisterUser(ctx, &req)
 	if err != nil {
 		return authResult{}, err
 	}
@@ -65,13 +65,13 @@ func (s *Server) performSelfRegistration(ctx context.Context) (authResult, error
 	return result, nil
 }
 
-func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
-	l := s.l.Fields(map[string]interface{}{"addr": r.RemoteAddr})
+func (e *endpoint) handler(w http.ResponseWriter, r *http.Request) {
+	l := e.l.Fields(map[string]interface{}{"addr": r.RemoteAddr})
 	for key, val := range r.Header {
 		l.Logf(logger.InfoLevel, "Got header %s = %+v", key, val)
 	}
 	token := r.Header.Get("X-Token")
-	result, err := s.authorize(r.Context(), token)
+	result, err := e.authorize(r.Context(), token)
 	if err != nil {
 		l.Logf(logger.ErrorLevel, "Forbidden: %s", err)
 		w.WriteHeader(http.StatusForbidden)
@@ -85,23 +85,23 @@ func (s *Server) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess := newSession(s.l, conn, result.userId, s.ch)
+	sess := newSession(e.l, conn, result.userId, e.ch)
 	defer sess.close()
 
-	s.mu.Lock()
-	if existing, ok := s.sessions[result.userId]; ok {
+	e.mu.Lock()
+	if existing, ok := e.sessions[result.userId]; ok {
 		existing.drop()
 	}
-	s.sessions[result.userId] = sess
-	s.mu.Unlock()
+	e.sessions[result.userId] = sess
+	e.mu.Unlock()
 
 	sess.run(r.Context(), result)
 
-	s.mu.Lock()
-	if existing, ok := s.sessions[result.userId]; ok {
+	e.mu.Lock()
+	if existing, ok := e.sessions[result.userId]; ok {
 		if existing == sess {
-			delete(s.sessions, result.userId)
+			delete(e.sessions, result.userId)
 		}
 	}
-	s.mu.Unlock()
+	e.mu.Unlock()
 }

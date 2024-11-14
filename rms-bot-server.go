@@ -56,8 +56,13 @@ func main() {
 
 	cfg := config.Config()
 
-	if useDebug || config.Config().Debug.Verbose {
+	if useDebug || cfg.Debug.Verbose {
 		_ = logger.Init(logger.WithLevel(logger.DebugLevel))
+	}
+
+	endpoints := cfg.Endpoints()
+	if len(endpoints) == 0 {
+		logger.Fatal("No endpoints specified")
 	}
 
 	database, err := db.Connect(cfg.Database)
@@ -65,18 +70,24 @@ func main() {
 		logger.Fatalf("Connect to database failed: %s", err)
 	}
 
-	srv := server.New(servicemgr.NewServiceFactory(service), cfg.Bot.SelfRegistration)
+	srv := server.New(servicemgr.NewServiceFactory(service), endpoints)
 
 	if err = rms_bot_server.RegisterRmsBotServerHandler(service.Server(), botService.New(srv, database)); err != nil {
 		logger.Fatalf("Register service failed: %s", err)
 	}
 
 	// запускаем Telegram бот
-	tBot, err := bot.NewBot(cfg.Bot.Token, database, srv)
-	if err != nil {
-		logger.Fatalf("Cannot start Telegram bot: %s", err)
+	for id, botConfig := range cfg.Bots {
+		endpoint, err := srv.GetEndpoint(id)
+		if err != nil {
+			logger.Fatalf("Endpoint wasn't registered properly: %s", err)
+		}
+		tBot, err := bot.NewBot(botConfig.Token, database, endpoint)
+		if err != nil {
+			logger.Fatalf("Cannot start Telegram bot: %s", err)
+		}
+		defer tBot.Stop()
 	}
-	defer tBot.Stop()
 
 	// запускам сервер, который будет обрабатывать WebSocket подключения от клиентов
 	if err = srv.ListenAndServe(cfg.Http.Host, cfg.Http.Port); err != nil {

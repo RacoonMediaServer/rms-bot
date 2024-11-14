@@ -1,6 +1,9 @@
 package config
 
-import "github.com/RacoonMediaServer/rms-packages/pkg/configuration"
+import (
+	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
+	"github.com/RacoonMediaServer/rms-packages/pkg/configuration"
+)
 
 // Bot is settings of Telegram Bot
 type Bot struct {
@@ -26,4 +29,13 @@ func Load(configFilePath string) error {
 // Config returns loaded configuration
 func Config() Configuration {
 	return config
+}
+
+func (c Configuration) Endpoints() []comm.Endpoint {
+	result := make([]comm.Endpoint, 0, len(c.Bots))
+	for k, v := range c.Bots {
+		e := comm.Endpoint{ID: k, SelfRegistration: v.SelfRegistration}
+		result = append(result, e)
+	}
+	return result
 }
