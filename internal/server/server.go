@@ -34,7 +34,8 @@ func New(f servicemgr.ServiceFactory, endpoints []comm.Endpoint) *Server {
 	mux := http.NewServeMux()
 
 	for _, endpoint := range endpoints {
-		e := newEndpoint(s.l.Fields(map[string]interface{}{"endpoint": endpoint.ID}), f, endpoint.SelfRegistration)
+		e := newEndpoint(s.l.Fields(map[string]interface{}{"endpoint": endpoint.ID}),
+			f, endpoint.ID)
 		s.endpoints[endpoint.ID] = e
 
 		mux.HandleFunc("/bot/"+endpoint.ID, e.handler)

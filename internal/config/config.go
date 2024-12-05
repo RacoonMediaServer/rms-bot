@@ -7,8 +7,7 @@ import (
 
 // Bot is settings of Telegram Bot
 type Bot struct {
-	Token            string
-	SelfRegistration bool `json:"selfRegistration"`
+	Token string
 }
 
 // Configuration represents entire service configuration
@@ -33,8 +32,8 @@ func Config() Configuration {
 
 func (c Configuration) Endpoints() []comm.Endpoint {
 	result := make([]comm.Endpoint, 0, len(c.Bots))
-	for k, v := range c.Bots {
-		e := comm.Endpoint{ID: k, SelfRegistration: v.SelfRegistration}
+	for k := range c.Bots {
+		e := comm.Endpoint{ID: k}
 		result = append(result, e)
 	}
 	return result

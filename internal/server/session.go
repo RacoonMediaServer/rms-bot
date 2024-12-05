@@ -29,7 +29,7 @@ func newSession(l logger.Logger, conn *websocket.Conn, userId string, out chan<-
 	}
 }
 
-func (s *session) run(ctx context.Context, ar authResult) {
+func (s *session) run(ctx context.Context) {
 	s.l.Log(logger.InfoLevel, "Established")
 	sessionsGauge.Inc()
 	defer sessionsGauge.Dec()
@@ -45,10 +45,6 @@ func (s *session) run(ctx context.Context, ar authResult) {
 		defer wg.Done()
 		s.writeProcess(ctx)
 	}()
-
-	if ar.selfReg {
-		s.user <- &communication.UserMessage{Type: communication.MessageType_DemoApiKey, Text: ar.token}
-	}
 
 	s.out <- getDeviceConnectedMessage(s.userId)
 	defer func() {

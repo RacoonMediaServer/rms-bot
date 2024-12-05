@@ -12,8 +12,7 @@
   },
   "bots": {
     "public": { 
-      "token": "",
-      "selfRegistration": false
+      "token": ""
     }
   },
   "debug": {

@@ -1,13 +1,14 @@
 package bot
 
 import (
+	"time"
+
 	"github.com/RacoonMediaServer/rms-bot-server/internal/comm"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/communication"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/teris-io/shortid"
 	"go-micro.dev/v4/logger"
-	"time"
 )
 
 const linkageCodeExpireTime = 10 * time.Minute
@@ -56,14 +57,18 @@ func (bot *Bot) clearExpiredLinkageCodes() {
 }
 
 func (bot *Bot) linkUserToDevice(user *tgbotapi.User, chatID int64, code linkageCode) error {
-	u := model.DeviceUser{UserID: user.ID, ChatID: chatID, NickName: user.UserName}
-	if err := bot.db.LinkUserToDevice(code.device, u); err != nil {
+	link := model.Link{
+		Device:   code.device,
+		TgUserID: user.ID,
+		TgChatID: chatID,
+		NickName: user.UserName,
+	}
+	if err := bot.db.AddLink(&link); err != nil {
 		return err
 	}
-	l := bot.linkages[code.device]
-	l.Users = append(l.Users, u)
-	bot.linkages[code.device] = l
-	bot.userToDevice[user.ID] = code.device
+
+	bot.deviceToUsers[code.device] = append(bot.deviceToUsers[code.device], &link)
+	bot.chatToDevice[chatID] = code.device
 
 	delete(bot.codeToDevice, code.code)
 	delete(bot.deviceToCode, code.device)
@@ -72,16 +77,18 @@ func (bot *Bot) linkUserToDevice(user *tgbotapi.User, chatID int64, code linkage
 }
 
 func (bot *Bot) unlinkUserFromDevice(user int, device string) {
-	l, ok := bot.linkages[device]
+	links, ok := bot.deviceToUsers[device]
 	if !ok {
 		bot.l.Logf(logger.WarnLevel, "Cannot unlink user %d from device %s: no linkage", user, device)
 		return
 	}
 
 	userIndex := -1
-	for i, u := range l.Users {
-		if u.UserID == user {
+	foundLink := &model.Link{}
+	for i, u := range links {
+		if u.TgUserID == user {
 			userIndex = i
+			foundLink = u
 			break
 		}
 	}
@@ -90,12 +97,13 @@ func (bot *Bot) unlinkUserFromDevice(user int, device string) {
 		return
 	}
 
-	if err := bot.db.UnlinkUser(device, l.Users[userIndex]); err != nil {
+	if err := bot.db.DelLink(foundLink); err != nil {
 		bot.l.Logf(logger.WarnLevel, "Cannot unlink user %d from device %s: %s", user, device, err)
 		return
 	}
 
-	delete(bot.userToDevice, user)
-	l.Users = append(l.Users[:userIndex], l.Users[userIndex+1:]...)
-	bot.linkages[device] = l
+	delete(bot.chatToDevice, foundLink.TgChatID)
+
+	links = append(links[:userIndex], links[userIndex+1:]...)
+	bot.deviceToUsers[device] = links
 }

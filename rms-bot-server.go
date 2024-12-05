@@ -7,6 +7,7 @@ import (
 	"github.com/RacoonMediaServer/rms-bot-server/internal/bot"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/config"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/db"
+	"github.com/RacoonMediaServer/rms-bot-server/internal/helpers"
 	"github.com/RacoonMediaServer/rms-bot-server/internal/server"
 	botService "github.com/RacoonMediaServer/rms-bot-server/internal/service"
 	rms_bot_server "github.com/RacoonMediaServer/rms-packages/pkg/service/rms-bot-server"
@@ -82,7 +83,11 @@ func main() {
 		if err != nil {
 			logger.Fatalf("Endpoint wasn't registered properly: %s", err)
 		}
-		tBot, err := bot.NewBot(botConfig.Token, database, endpoint)
+		d := &helpers.LinksDomainDecorator{
+			Domain:   id,
+			Database: database,
+		}
+		tBot, err := bot.NewBot(botConfig.Token, d, endpoint)
 		if err != nil {
 			logger.Fatalf("Cannot start Telegram bot: %s", err)
 		}

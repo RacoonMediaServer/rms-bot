@@ -9,22 +9,22 @@ import (
 )
 
 type endpoint struct {
-	l       logger.Logger
-	f       servicemgr.ServiceFactory
-	selfReg bool
-	ch      chan comm.OutgoingMessage
+	l      logger.Logger
+	f      servicemgr.ServiceFactory
+	domain string
+	ch     chan comm.OutgoingMessage
 
 	mu       sync.RWMutex
 	sessions map[string]*session
 }
 
-func newEndpoint(l logger.Logger, f servicemgr.ServiceFactory, selfRegistration bool) *endpoint {
+func newEndpoint(l logger.Logger, f servicemgr.ServiceFactory, domain string) *endpoint {
 	return &endpoint{
 		l:        l,
 		f:        f,
+		domain:   domain,
 		sessions: make(map[string]*session),
 		ch:       make(chan comm.OutgoingMessage, maxMessageQueueSize),
-		selfReg:  selfRegistration,
 	}
 }
 

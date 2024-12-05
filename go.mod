@@ -3,7 +3,7 @@ module github.com/RacoonMediaServer/rms-bot-server
 go 1.20
 
 require (
-	github.com/RacoonMediaServer/rms-packages v1.14.3
+	github.com/RacoonMediaServer/rms-packages v1.14.7
 	github.com/go-micro/plugins/v4/registry/etcd v1.2.0
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/gorilla/websocket v1.4.2

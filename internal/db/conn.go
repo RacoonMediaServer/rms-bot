@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+
 	"github.com/RacoonMediaServer/rms-bot-server/internal/model"
 	"github.com/RacoonMediaServer/rms-packages/pkg/configuration"
 	"gorm.io/driver/postgres"
@@ -18,10 +19,7 @@ func Connect(config configuration.Database) (*Database, error) {
 		return nil, err
 	}
 
-	if err = db.AutoMigrate(&model.Linkage{}); err != nil {
-		return nil, fmt.Errorf("update database failed: %s", err)
-	}
-	if err = db.AutoMigrate(&model.DeviceUser{}); err != nil {
+	if err = db.AutoMigrate(&model.Link{}); err != nil {
 		return nil, fmt.Errorf("update database failed: %s", err)
 	}
 	return &Database{conn: db}, nil

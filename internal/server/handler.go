@@ -23,13 +23,15 @@ type authResult struct {
 
 func (e *endpoint) authorize(ctx context.Context, token string) (authResult, error) {
 	if token == "" {
-		if e.selfReg {
-			return e.performSelfRegistration(ctx)
-		}
 		return authResult{}, errors.New("invalid empty token")
 	}
 
-	req := rms_users.CheckPermissionsRequest{Token: token, Perms: []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot}}
+	req := rms_users.CheckPermissionsRequest{
+		Token:  token,
+		Perms:  []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot},
+		Domain: &e.domain,
+	}
+
 	resp, err := e.f.NewUsers().CheckPermissions(ctx, &req)
 	if err != nil {
 		return authResult{}, err
@@ -40,28 +42,10 @@ func (e *endpoint) authorize(ctx context.Context, token string) (authResult, err
 	}
 
 	result := authResult{
-		userId:  resp.UserId,
-		token:   token,
-		selfReg: false,
+		userId: resp.UserId,
+		token:  token,
 	}
 
-	return result, nil
-}
-
-func (e *endpoint) performSelfRegistration(ctx context.Context) (authResult, error) {
-	req := rms_users.User{
-		Perms: []rms_users.Permissions{rms_users.Permissions_ConnectingToTheBot},
-	}
-	resp, err := e.f.NewUsers().RegisterUser(ctx, &req)
-	if err != nil {
-		return authResult{}, err
-	}
-
-	result := authResult{
-		userId:  resp.UserId,
-		token:   resp.Token,
-		selfReg: true,
-	}
 	return result, nil
 }
 
@@ -95,7 +79,7 @@ func (e *endpoint) handler(w http.ResponseWriter, r *http.Request) {
 	e.sessions[result.userId] = sess
 	e.mu.Unlock()
 
-	sess.run(r.Context(), result)
+	sess.run(r.Context())
 
 	e.mu.Lock()
 	if existing, ok := e.sessions[result.userId]; ok {

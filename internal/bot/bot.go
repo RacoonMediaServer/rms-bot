@@ -18,9 +18,9 @@ import (
 
 // Database is a set of methods for accessing table, which map devices to Telegram users
 type Database interface {
-	LoadLinkages() (map[string]model.Linkage, error)
-	LinkUserToDevice(deviceID string, u model.DeviceUser) error
-	UnlinkUser(deviceID string, u model.DeviceUser) error
+	LoadLinks() (result map[string][]*model.Link, err error)
+	AddLink(link *model.Link) error
+	DelLink(link *model.Link) error
 }
 
 // Bot implements a Telegram bot
@@ -32,8 +32,8 @@ type Bot struct {
 	c   comm.DeviceCommunicator
 	db  Database
 
-	linkages     map[string]model.Linkage
-	userToDevice map[int]string
+	deviceToUsers map[string][]*model.Link
+	chatToDevice  map[int64]string
 
 	codeToDevice map[string]linkageCode
 	deviceToCode map[string]string
@@ -44,22 +44,23 @@ type stopCommand struct{}
 func NewBot(token string, database Database, c comm.DeviceCommunicator) (*Bot, error) {
 	var err error
 	bot := &Bot{
-		l:            logger.DefaultLogger.Fields(map[string]interface{}{"from": "bot"}),
-		db:           database,
-		c:            c,
-		linkages:     map[string]model.Linkage{},
-		userToDevice: map[int]string{},
-		codeToDevice: map[string]linkageCode{},
-		deviceToCode: map[string]string{},
+		l:  logger.DefaultLogger.Fields(map[string]interface{}{"from": "bot"}),
+		db: database,
+		c:  c,
+
+		deviceToUsers: map[string][]*model.Link{},
+		chatToDevice:  map[int64]string{},
+		codeToDevice:  map[string]linkageCode{},
+		deviceToCode:  map[string]string{},
 	}
 
-	bot.linkages, err = database.LoadLinkages()
+	bot.deviceToUsers, err = database.LoadLinks()
 	if err != nil {
 		return nil, fmt.Errorf("load linkages failed: %w", err)
 	}
-	for id, l := range bot.linkages {
-		for _, u := range l.Users {
-			bot.userToDevice[u.UserID] = id
+	for id, links := range bot.deviceToUsers {
+		for _, link := range links {
+			bot.chatToDevice[link.TgChatID] = id
 		}
 	}
 
@@ -151,17 +152,17 @@ func (bot *Bot) send(msg tgbotapi.Chattable) int {
 }
 
 func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
-	l, ok := bot.linkages[message.DeviceID]
+	links, ok := bot.deviceToUsers[message.DeviceID]
 	if !ok {
 		return
 	}
-	for _, u := range l.Users {
-		if message.Message.User == 0 || message.Message.User == int32(u.UserID) {
-			msg := deserializeMessage(u.ChatID, message.Message)
+	for _, u := range links {
+		if message.Message.User == 0 || message.Message.User == int32(u.TgUserID) {
+			msg := deserializeMessage(u.TgChatID, message.Message)
 			msgId := bot.send(msg)
 			if message.Message.Pin == communication.BotMessage_ThisMessage {
 				cfg := tgbotapi.PinChatMessageConfig{
-					ChatID:    u.ChatID,
+					ChatID:    u.TgChatID,
 					MessageID: msgId,
 				}
 				_, err := bot.api.PinChatMessage(cfg)
@@ -170,7 +171,7 @@ func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
 				}
 			} else if message.Message.Pin == communication.BotMessage_Drop {
 				params := url.Values{}
-				params.Add("chat_id", strconv.FormatInt(u.ChatID, 10))
+				params.Add("chat_id", strconv.FormatInt(u.TgChatID, 10))
 				_, err := bot.api.MakeRequest("unpinAllChatMessages", params)
 				if err != nil {
 					bot.l.Logf(logger.WarnLevel, "Unpin message failed: %s", err)
@@ -182,7 +183,7 @@ func (bot *Bot) sendMessageToUser(message comm.OutgoingMessage) {
 
 func (bot *Bot) sendMessageToDevice(message *tgbotapi.Message) {
 	bot.l.Logf(logger.DebugLevel, "Got message from Telegram: '%s' [@%s, %d]", message.Text, message.From.UserName, message.From.ID)
-	token, ok := bot.userToDevice[message.From.ID]
+	token, ok := bot.chatToDevice[message.Chat.ID]
 	if !ok {
 		if code, ok := bot.codeToDevice[message.Text]; ok {
 			if err := bot.linkUserToDevice(message.From, message.Chat.ID, code); err != nil {
