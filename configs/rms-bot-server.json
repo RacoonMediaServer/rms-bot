@@ -13,6 +13,9 @@
   "bots": {
     "public": { 
       "token": ""
+    },
+    "private": {
+      "token": ""
     }
   },
   "debug": {
