@@ -5,6 +5,6 @@ type Link struct {
 	Domain   string `gorm:"primaryKey"`
 	Device   string `gorm:"primaryKey"`
 	TgUserID int    `gorm:"primaryKey"`
-	TgChatID int64  `gorm:"unique"`
+	TgChatID int64
 	NickName string
 }
